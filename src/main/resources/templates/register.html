@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription - Gestion d'Événements</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .register-container {
+            max-width: 500px;
+            width: 100%;
+            padding: 2rem;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        .form-floating {
+            margin-bottom: 1rem;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 1rem;
+        }
+        .login-link {
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+        .alert {
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="register-container">
+            <h2 class="text-center mb-4">Inscription</h2>
+            
+            <!-- Message d'erreur -->
+            <div id="error-message" class="alert alert-danger d-none" role="alert"></div>
+            
+            <!-- Message de succès -->
+            <div id="success-message" class="alert alert-success d-none" role="alert"></div>
+            
+            <form id="registerForm">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="nom_utilisateur" name="nom_utilisateur" placeholder="Nom d'utilisateur" required>
+                    <label for="nom_utilisateur">Nom d'utilisateur</label>
+                </div>
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="nom" name="nom" placeholder="Nom complet" required>
+                    <label for="nom">Nom complet</label>
+                </div>
+                <div class="form-floating mb-3">
+                    <input type="email" class="form-control" id="email" name="email" placeholder="Adresse e-mail" required>
+                    <label for="email">Adresse e-mail</label>
+                </div>
+                <div class="form-floating mb-3">
+                    <input type="password" class="form-control" id="password" name="mot_de_passe" placeholder="Mot de passe" required>
+                    <label for="password">Mot de passe</label>
+                </div>
+                <div class="form-floating mb-3">
+                    <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" placeholder="Confirmer le mot de passe" required>
+                    <label for="confirmPassword">Confirmer le mot de passe</label>
+                </div>
+                <button type="submit" class="btn btn-primary" id="register-button">
+                    <span id="register-text">S'inscrire</span>
+                    <span id="register-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                </button>
+            </form>
+            
+            <div class="login-link">
+                <p>Déjà inscrit ? <a href="/login">Se connecter</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Afficher le spinner et désactiver le bouton
+            const registerButton = document.getElementById('register-button');
+            const registerText = document.getElementById('register-text');
+            const registerSpinner = document.getElementById('register-spinner');
+            const errorMessage = document.getElementById('error-message');
+            const successMessage = document.getElementById('success-message');
+            
+            registerButton.disabled = true;
+            registerText.textContent = 'Inscription en cours...';
+            registerSpinner.classList.remove('d-none');
+            errorMessage.classList.add('d-none');
+            successMessage.classList.add('d-none');
+            
+            // Récupérer les données du formulaire
+            const formData = {
+                nom_utilisateur: document.getElementById('nom_utilisateur').value,
+                nom: document.getElementById('nom').value,
+                email: document.getElementById('email').value,
+                mot_de_passe: document.getElementById('password').value,
+                confirmPassword: document.getElementById('confirmPassword').value
+            };
+            
+            // Validation des champs
+            if (!formData.nom_utilisateur || !formData.nom || !formData.email || !formData.mot_de_passe || !formData.confirmPassword) {
+                showError('Veuillez remplir tous les champs');
+                resetRegisterButton();
+                return;
+            }
+            
+            if (formData.mot_de_passe !== formData.confirmPassword) {
+                showError('Les mots de passe ne correspondent pas');
+                resetRegisterButton();
+                return;
+            }
+            
+            // Supprimer le champ de confirmation du mot de passe avant l'envoi
+            delete formData.confirmPassword;
+            
+            // Envoi de la requête d'inscription
+            fetch('/api/organisateur/creer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Afficher le message de succès
+                showSuccess('Inscription réussie ! Vous pouvez maintenant vous connecter.');
+                // Réinitialiser le formulaire
+                document.getElementById('registerForm').reset();
+                // Rediriger vers la page de connexion après 2 secondes
+                setTimeout(() => {
+                    window.location.href = '/login?registered=true';
+                }, 2000);
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                const errorMsg = error.message || 'Une erreur est survenue lors de l\'inscription';
+                showError(errorMsg);
+            })
+            .finally(() => {
+                resetRegisterButton();
+            });
+        });
+        
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = message;
+            errorElement.classList.remove('d-none');
+        }
+        
+        function showSuccess(message) {
+            const successElement = document.getElementById('success-message');
+            successElement.textContent = message;
+            successElement.classList.remove('d-none');
+        }
+        
+        function resetRegisterButton() {
+            const registerButton = document.getElementById('register-button');
+            const registerText = document.getElementById('register-text');
+            const registerSpinner = document.getElementById('register-spinner');
+            
+            registerButton.disabled = false;
+            registerText.textContent = 'S\'inscrire';
+            registerSpinner.classList.add('d-none');
+        }
+        
+        // Si l'utilisateur vient de s'inscrire, afficher un message
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('registered') === 'true') {
+            showSuccess('Inscription réussie ! Veuillez vous connecter.');
+        }
+            setTimeout(() => {
+                errorElement.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

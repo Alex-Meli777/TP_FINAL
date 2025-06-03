@@ -1,0 +1,8 @@
+package com.poo2.tpfinal.dto;
+
+public class CreerOrganisateurRequestDto {
+    private String nom_utilisateur;
+    private String mot_de_passe;
+    private String nom;
+    private String email;
+}

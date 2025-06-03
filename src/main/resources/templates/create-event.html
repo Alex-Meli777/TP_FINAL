@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Créer un Événement - EventManager</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Notre style personnalisé -->
+    <link rel="stylesheet" th:href="@{/css/creerEventStyle.css}">
+    <style>
+        /* Surcharge des styles pour correspondre à creerEventStyle.css */
+        .form-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .form-title {
+            color: #333;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .event-type-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+        }
+
+        .required:after {
+            content: " *";
+            color: #dc3545;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .preview-image {
+            max-width: 200px;
+            max-height: 200px;
+            margin-top: 1rem;
+            border-radius: 8px;
+            display: none;
+        }
+
+        /* Style des boutons pour correspondre au thème */
+        .btn-primary {
+            background-color: #4e54c8;
+            border: none;
+            padding: 0.75rem;
+            border-radius: 8px;
+            transition: background 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: #3135a3;
+        }
+
+        .btn-outline-secondary {
+            color: #4e54c8;
+            border-color: #4e54c8;
+        }
+
+        .btn-outline-secondary:hover {
+            background-color: #4e54c8;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+<div class="container py-4">
+    <div class="form-container">
+        <a th:href="@{/evenements}" class="btn btn-outline-secondary mb-4">
+            <i class="fas fa-arrow-left me-2"></i>Retour aux événements
+        </a>
+
+        <h1 class="form-title">Créer un nouvel événement</h1>
+
+        <form id="eventForm" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="organisateurId" th:value="${#authentication.principal.id}">
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="type" class="form-label required">Type d'événement</label>
+                        <select class="form-select" id="type" name="type" required onchange="toggleEventTypeFields()">
+                            <option value="">Sélectionnez un type</option>
+                            <option value="CONCERT">Concert</option>
+                            <option value="CONFERENCE">Conférence</option>
+                        </select>
+                        <div class="error-message" id="typeError">Veuillez sélectionner un type d'événement</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="nom" class="form-label required">Nom de l'événement</label>
+                        <input type="text" class="form-control" id="nom" name="nom" required
+                               placeholder="Ex: Festival d'été, Conférence annuelle...">
+                        <div class="error-message" id="nomError">Le nom de l'événement est requis</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="lieu" class="form-label required">Lieu</label>
+                        <input type="text" class="form-control" id="lieu" name="lieu" required
+                               placeholder="Ex: Paris, Salle Pleyel...">
+                        <div class="error-message" id="lieuError">Le lieu est requis</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="date" class="form-label required">Date et heure</label>
+                        <input type="datetime-local" class="form-control" id="date" name="date" required>
+                        <div class="error-message" id="dateError">La date et l'heure sont requises</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="capacite_max" class="form-label required">Capacité maximale</label>
+                        <input type="number" class="form-control" id="capacite_max" name="capacite_max"
+                               min="1" required placeholder="Ex: 100">
+                        <div class="form-text">Nombre maximum de participants</div>
+                        <div class="error-message" id="capaciteError">Veuillez entrer une capacité valide (minimum 1)</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="visibilite" class="form-label required">Visibilité</label>
+                        <select class="form-select" id="visibilite" name="visibilite" required>
+                            <option value="PUBLIC">Public</option>
+                            <option value="PRIVE">Privé</option>
+                        </select>
+                        <div class="form-text">Les événements privés ne sont visibles que par les utilisateurs invités</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description"
+                          rows="4" placeholder="Décrivez votre événement en détail..."></textarea>
+            </div>
+
+            <div class="mb-4">
+                <label for="image" class="form-label">Image de l'événement</label>
+                <input type="file" class="form-control" id="image" name="image" accept="image/*" onchange="previewImage(this)">
+                <img id="imagePreview" class="preview-image" alt="Aperçu de l'image">
+                <div class="form-text">Formats acceptés : JPG, PNG, GIF (max 5MB)</div>
+            </div>
+
+            <!-- Champs spécifiques aux concerts -->
+            <div id="concertFields" class="event-type-section" style="display: none;">
+                <h4 class="mb-4"><i class="fas fa-music me-2"></i>Détails du concert</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="genre" class="form-label required">Genre musical</label>
+                            <input type="text" class="form-control" id="genre" name="genre"
+                                   placeholder="Ex: Rock, Pop, Classique...">
+                            <div class="error-message" id="genreError">Le genre est requis pour un concert</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="artiste" class="form-label">Artiste/Groupes</label>
+                            <input type="text" class="form-control" id="artiste" name="artiste"
+                                   placeholder="Ex: Coldplay, Daft Punk...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Champs spécifiques aux conférences -->
+            <div id="conferenceFields" class="event-type-section" style="display: none;">
+                <h4 class="mb-4"><i class="fas fa-chalkboard-teacher me-2"></i>Détails de la conférence</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="theme" class="form-label required">Thème principal</label>
+                            <input type="text" class="form-control" id="theme" name="theme"
+                                   placeholder="Ex: Intelligence Artificielle, Développement Durable...">
+                            <div class="error-message" id="themeError">Le thème est requis pour une conférence</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="intervenants" class="form-label">Intervenant(s)</label>
+                            <input type="text" class="form-control" id="intervenants" name="intervenants"
+                                   placeholder="Noms des intervenants principaux">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-calendar-plus me-2"></i>Créer l'événement
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Fonction pour afficher/masquer les champs spécifiques au type d'événement
+    function toggleEventTypeFields() {
+        const type = document.getElementById('type').value;
+        const concertFields = document.getElementById('concertFields');
+        const conferenceFields = document.getElementById('conferenceFields');
+
+        // Masquer tous les champs spécifiques d'abord
+        if (concertFields) concertFields.style.display = 'none';
+        if (conferenceFields) conferenceFields.style.display = 'none';
+
+        // Afficher uniquement les champs pertinents
+        if (type === 'CONCERT') {
+            if (concertFields) concertFields.style.display = 'block';
+        } else if (type === 'CONFERENCE') {
+            if (conferenceFields) conferenceFields.style.display = 'block';
+        }
+    }
+
+    // Fonction pour prévisualiser l'image
+    function previewImage(input) {
+        const preview = document.getElementById('imagePreview');
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // Validation du formulaire
+    function validateForm() {
+        let isValid = true;
+        const type = document.getElementById('type').value;
+
+        // Réinitialiser les erreurs
+        document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+
+        // Validation du type
+        if (!type) {
+            document.getElementById('typeError').style.display = 'block';
+            isValid = false;
+        }
+
+        // Validation du nom
+        const nom = document.getElementById('nom').value.trim();
+        if (!nom) {
+            document.getElementById('nomError').style.display = 'block';
+            isValid = false;
+        }
+
+        // Validation du lieu
+        const lieu = document.getElementById('lieu').value.trim();
+        if (!lieu) {
+            document.getElementById('lieuError').style.display = 'block';
+            isValid = false;
+        }
+
+        // Validation de la date
+        const date = document.getElementById('date').value;
+        if (!date) {
+            document.getElementById('dateError').style.display = 'block';
+            isValid = false;
+        }
+
+        // Validation de la capacité
+        const capacite = document.getElementById('capacite_max').value;
+        if (!capacite || parseInt(capacite) < 1) {
+            document.getElementById('capaciteError').style.display = 'block';
+            isValid = false;
+        }
+
+        // Validation des champs spécifiques
+        if (type === 'CONCERT') {
+            const genre = document.getElementById('genre').value.trim();
+            if (!genre) {
+                document.getElementById('genreError').style.display = 'block';
+                isValid = false;
+            }
+        } else if (type === 'CONFERENCE') {
+            const theme = document.getElementById('theme').value.trim();
+            if (!theme) {
+                document.getElementById('themeError').style.display = 'block';
+                isValid = false;
+            }
+        }
+
+        return isValid;
+    }
+
+    // Gestion de la soumission du formulaire
+    document.getElementById('eventForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!validateForm()) {
+            return;
+        }
+
+        const formData = new FormData(this);
+        const eventData = {
+            attributs: {
+                type: formData.get('type'),
+                nom: formData.get('nom'),
+                lieu: formData.get('lieu'),
+                date: formData.get('date'),
+                capacite_max: parseInt(formData.get('capacite_max')),
+                description: formData.get('description'),
+                visibilite: formData.get('visibilite'),
+                organisateurId: formData.get('organisateurId')
+            }
+        };
+
+        // Ajouter les champs spécifiques au type d'événement
+        const type = formData.get('type');
+        if (type === 'CONCERT') {
+            eventData.attributs.genre = formData.get('genre');
+            eventData.attributs.artiste = formData.get('artiste');
+        } else if (type === 'CONFERENCE') {
+            eventData.attributs.theme = formData.get('theme');
+            eventData.attributs.intervenants = formData.get('intervenants');
+        }
+
+        // Gérer l'upload de l'image
+        const imageInput = document.getElementById('image');
+        if (imageInput.files.length > 0) {
+            // Ici, vous devrez implémenter la logique d'upload d'image
+            // et ajouter l'URL au eventData.attributs.image_url
+            // Par exemple :
+            // const imageUrl = await uploadImage(imageInput.files[0]);
+            // eventData.attributs.image_url = imageUrl;
+        }
+
+        try {
+            const response = await fetch('/evenement/creerEvenement', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(eventData)
+            });
+
+            if (!response.ok) {
+                const error = await response.text();
+                throw new Error(error || 'Erreur lors de la création de l\'événement');
+            }
+
+            const result = await response.json();
+            window.location.href = `/evenements/${result.id}`;
+        } catch (error) {
+            console.error('Erreur:', error);
+            alert('Une erreur est survenue lors de la création de l\'événement: ' + error.message);
+        }
+    });
+
+    // Fonction utilitaire pour l'upload d'image (à implémenter)
+    async function uploadImage(file) {
+        // Implémentez la logique d'upload ici
+        // Retourne une promesse qui se résout avec l'URL de l'image
+        return new Promise((resolve) => {
+            // Simulation d'upload
+            setTimeout(() => {
+                resolve(`/uploads/${file.name}`);
+            }, 1000);
+        });
+    }
+</script>
+</body>
+</html>
